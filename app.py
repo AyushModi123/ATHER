@@ -2,19 +2,23 @@ import jwt
 from jwt.exceptions import PyJWTError
 from datetime import datetime, timedelta
 from typing import Optional
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, status, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer
 from fastapi.responses import JSONResponse, Response
-from dotenv import load_dotenv
-load_dotenv()
-from db import db, engine
-from users import UserLoginSchema, UserSignupSchema
-from models.users import UsersModel, Base
+from typing import Annotated
 import bcrypt
 from bson import ObjectId
 import os
 import uvicorn
+import io
+from dotenv import load_dotenv
+load_dotenv()
+from db import db, engine
+from schemas import UserLoginSchema, UserSignupSchema
+from models.models import Base, UsersModel, EducationModel, ExperienceModel, Skills
+from resources.parse_resume import data_extraction  
+
 
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/token")
@@ -48,15 +52,31 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, JWT_SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
+
 def get_current_user(token: str = Depends(oauth2_scheme)):
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
     try:
         payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=[ALGORITHM])
         email: str = payload.get("sub")
         if email is None:
-            raise HTTPException(status_code=401, detail="Invalid authentication credentials")
+            raise credentials_exception
     except PyJWTError:
-        raise HTTPException(status_code=401, detail="Invalid authentication credentials")
-    return email
+        raise credentials_exception
+    user = db.query(UsersModel).filter_by(email=email).first()
+    if user is None:
+        raise credentials_exception
+    return user
+
+# async def get_current_active_user(
+#     current_user: Annotated[UsersModel, Depends(get_current_user)]
+# ):
+#     if current_user.disabled:
+#         raise HTTPException(status_code=400, detail="Inactive user")
+#     return current_user
 
 
 @app.post("/signup")
@@ -91,6 +111,42 @@ async def login(user_data: UserLoginSchema):
             return JSONResponse(content={'access_token': access_token}, status_code=201)    
     raise HTTPException(status_code=401, detail="Invalid Credentials.")
 
+@app.post("/upload_resume")
+async def upload_resume(file: UploadFile, current_user_id: str = Depends(get_current_user)):
+# async def upload_resume(file: UploadFile, current_user_id=4):
+    if file.content_type != "application/pdf":
+        return HTTPException(status_code=400, detail="Only PDF files are allowed.")
+    file_bytes = await file.read()
+    de_obj = data_extraction(io.BytesIO(file_bytes))
+    doc = de_obj.parse_resume()
+    # print(doc)
+    for ed in doc.education:
+        education = EducationModel(
+            user_id=current_user_id,
+            name=ed.name,
+            stream=ed.stream,
+            score=ed.score,
+            location=ed.location,
+            graduation_year=ed.graduation_year
+        )
+        db.add(education)
+    for exp in doc.experience:
+        experience = ExperienceModel(
+            user_id = current_user_id,
+            company_name=exp.company_name,
+            role=exp.role,
+            role_desc=exp.role_desc,
+            start_date=exp.start_date,
+            end_date=exp.end_date
+        )
+        db.add(experience)
+    skills = Skills(
+        user_id=current_user_id,
+        skills=doc.skills
+        )
+    db.add(skills)
+    db.commit()
+    return JSONResponse(content={'message': "PDF file uploaded and parsed successfully."}, status_code=201)
 
 if __name__ == '__main__':
     uvicorn.run('app:app', host='0.0.0.0', port=5000, reload=True)
