@@ -30,10 +30,10 @@ class Resume(BaseModel):
     experience: Sequence[Experience] = Field(..., description="Contains list of different experiences")
     skills: str = Field(None, description="Contains technical and non technical skills separated by comma")
 
-class Cold_Email(BaseModel):
-    """Generate Cold Email"""
+class Email(BaseModel):
+    """Generate Email"""
     subject: str = Field(..., description="Generate a short precise subject of email")
-    body: str = Field(..., description="Generate short body of email describing details of resume and how they fit the job description")
+    body: str = Field(..., description="Generate body of email describing details of resume and how they fit the job")
 
 
 parse_resume_prompt = PromptTemplate(
@@ -45,7 +45,14 @@ parse_resume_prompt = PromptTemplate(
 cold_email_prompt = PromptTemplate(
     input_variables=["applicant_details", "job_description"],
     template='''You are a world class algorithm for generating emails in structured formats. Use the given format to write cold email from the following input applicant details: {applicant_details} for job description: {job_description}. 
-          Tip: Make sure to answer in the correct format. Keep the email short, on-point and explain why applicant is best fit for the role.'''
+          Tip: Make sure to answer in the correct format. Include relevant applicant details in email. Keep email short and on-point which explains why applicant is best fit for the role.'''
+)
+
+referral_email_prompt = PromptTemplate(
+    input_variables=["applicant_details", "job_role"],
+    template='''You are a world class algorithm for generating emails in structured formats. Use the given format to write referral email from the following input applicant details: {applicant_details}.
+          Tip: Make sure to answer in the correct format. Applicant is asking for referral for this job role: {job_role}. Include relevant applicant details in email. Keep email short and on-point.
+          Through words, applicant tries to show how much this job can impact the carrer. Also include 2 line poem in email in professional and funny tone.'''
 )
 #ToDo
 # Scrape website of company which posted job desciption and pass it to gpt

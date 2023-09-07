@@ -17,7 +17,7 @@ load_dotenv()
 from db import db, engine
 from schemas import UserLoginSchema, UserSignupSchema
 from models.models import Base, UsersModel, EducationModel, ExperienceModel, SkillsModel, UserDetailsModel
-from resources.preprocess_prompt import DataExtraction, ColdEmail
+from resources.preprocess_prompt import DataExtraction, generate_cold_email, generate_referral_email
 
 
 
@@ -43,6 +43,15 @@ app.add_middleware(
 )
 Base.metadata.create_all(bind=engine)
 
+def get_user_details(current_user_id):
+    details = db.query(UserDetailsModel).filter_by(id=current_user_id).first()
+    experience = db.query(ExperienceModel).filter_by(id=current_user_id).all()
+    education = db.query(EducationModel).filter_by(id=current_user_id).all()
+    skills = db.query(SkillsModel).filter_by(id=current_user_id).first()
+    
+    applicant_details = {"details": details.to_dict(), "experience": [exp.to_dict() for exp in experience], "education": [edu.to_dict() for edu in education], "skills": skills.to_dict()}
+    return applicant_details
+
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     to_encode = data.copy()
     if expires_delta:
@@ -53,7 +62,7 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     encoded_jwt = jwt.encode(to_encode, JWT_SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
-def get_current_user(token: str = Depends(oauth2_scheme)):
+async def get_current_user(token: str = Depends(oauth2_scheme)):
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -71,12 +80,10 @@ def get_current_user(token: str = Depends(oauth2_scheme)):
         raise credentials_exception
     return user
 
-# async def get_current_active_user(
-#     current_user: Annotated[UsersModel, Depends(get_current_user)]
-# ):
-#     if current_user.disabled:
-#         raise HTTPException(status_code=400, detail="Inactive user")
-#     return current_user
+async def get_current_verified_user(current_user: Annotated[UsersModel, Depends(get_current_user)]):
+    if not current_user.verify_status:
+        raise HTTPException(status_code=400, detail="User is not verified")
+    return current_user
 
 
 @app.post("/signup")
@@ -112,7 +119,7 @@ async def login(user_data: Annotated[OAuth2PasswordRequestForm, Depends()]):
     raise HTTPException(status_code=401, detail="Invalid Credentials.")
 
 @app.post("/upload_resume")
-async def upload_resume(file: UploadFile, current_user: str = Depends(get_current_user)):
+async def upload_resume(file: UploadFile, current_user: str = Depends(get_current_verified_user)):
     current_user_id = current_user.id
     if file.content_type != "application/pdf":
         return HTTPException(status_code=400, detail="Only PDF files are allowed.")
@@ -164,16 +171,20 @@ async def upload_resume(file: UploadFile, current_user: str = Depends(get_curren
     return JSONResponse(content={'message': "PDF file uploaded and parsed successfully."}, status_code=201)
 
 @app.post("/cold_email")
-async def cold_email(job_description: str, current_user: str = Depends(get_current_user)):
+async def cold_email(job_description: str, current_user: str = Depends(get_current_verified_user)):
     current_user_id = current_user.id
-    details = db.query(UserDetailsModel).filter_by(id=current_user_id).first()
-    experience = db.query(ExperienceModel).filter_by(id=current_user_id).all()
-    education = db.query(EducationModel).filter_by(id=current_user_id).all()
-    skills = db.query(SkillsModel).filter_by(id=current_user_id).first()
+    applicant_details = get_user_details(current_user_id=current_user_id)
+    print(applicant_details)
+    email = generate_cold_email(applicant_details=applicant_details, job_description=job_description)
     
-    cold_email_obj = ColdEmail({"details": details, "experience": experience, "education": education, "skills": skills})
-    email = cold_email_obj.generate_cold_email(job_description=job_description)
-    
+    return JSONResponse(content={"email": {"subject": email.subject, "body": email.body}}, status_code=201)
+
+@app.post("/referral_email")
+async def referral_email(job_title: str, current_user: str = Depends(get_current_verified_user)):
+    current_user_id = current_user.id
+    applicant_details = get_user_details(current_user_id=current_user_id)
+    email = generate_referral_email(applicant_details=applicant_details, job_title=job_title)
+
     return JSONResponse(content={"email": {"subject": email.subject, "body": email.body}}, status_code=201)
 
 if __name__ == '__main__':

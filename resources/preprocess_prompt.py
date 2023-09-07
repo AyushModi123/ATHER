@@ -1,6 +1,6 @@
 from PyPDF2 import PdfReader
 import os
-from prompts import parse_resume_prompt, cold_email_prompt, Resume, Cold_Email
+from prompts import parse_resume_prompt, cold_email_prompt, referral_email_prompt, Resume, Email
 from utils.exec_prompt import exec_prompt
 
 
@@ -52,18 +52,21 @@ class DataExtraction:
         return document
 
 
-class ColdEmail:
-    def __init__(self, applicant_details) -> None:
-        self.applicant_details = applicant_details
+def generate_cold_email(applicant_details, job_description):
+    try:
+        document = exec_prompt(output_schema=Email, parse_prompt=cold_email_prompt, input_data={"applicant_details": applicant_details, "job_description": job_description})
+    except Exception as e:  
+        print("ERROR:", e)
+        return None
+    return document
 
-    def generate_cold_email(self, job_description):
-        try:
-            document = exec_prompt(output_schema=Cold_Email, parse_prompt=cold_email_prompt, input_data={"applicant_details": self.applicant_details, "job_description": job_description})
-        except Exception as e:  
-            print("ERROR:", e)
-            return None
-        return document
-    
+def generate_referral_email(applicant_details, job_title):
+    try:
+        document = exec_prompt(output_schema=Email, parse_prompt=referral_email_prompt, input_data={"applicant_details": applicant_details, "job_title": job_title})
+    except Exception as e:  
+        print("ERROR:", e)
+        return None
+    return document
 
 if __name__ == '__main__':
     from dotenv import load_dotenv
