@@ -1,7 +1,6 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 import os
-import pandas as pd
 
 SQLALCHEMY_DATABASE_URL =  os.getenv('SQL_URL')
 

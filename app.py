@@ -171,11 +171,11 @@ async def upload_resume(file: UploadFile, current_user: str = Depends(get_curren
     return JSONResponse(content={'message': "PDF file uploaded and parsed successfully."}, status_code=201)
 
 @app.post("/cold_email")
-async def cold_email(job_description: str, current_user: str = Depends(get_current_verified_user)):
+async def cold_email(job_description: str, company_website_url: Optional[str] = None, current_user: str = Depends(get_current_verified_user)):
     current_user_id = current_user.id
     applicant_details = get_user_details(current_user_id=current_user_id)
     print(applicant_details)
-    email = generate_cold_email(applicant_details=applicant_details, job_description=job_description)
+    email = generate_cold_email(applicant_details=applicant_details, job_description=job_description, company_website_url=company_website_url)
     
     return JSONResponse(content={"email": {"subject": email.subject, "body": email.body}}, status_code=201)
 

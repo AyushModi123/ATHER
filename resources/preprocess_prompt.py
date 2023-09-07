@@ -1,8 +1,8 @@
 from PyPDF2 import PdfReader
 import os
-from prompts import parse_resume_prompt, cold_email_prompt, referral_email_prompt, Resume, Email
+from prompts import parse_resume_prompt, cold_email_prompt, referral_email_prompt, ResumeSchema, EmailSchema
 from utils.exec_prompt import exec_prompt
-
+from utils.scraper import scrape_web
 
 class DataExtraction:
     def __init__(self, path):        
@@ -45,16 +45,23 @@ class DataExtraction:
         if not self.context:
             return
         try:
-            document = exec_prompt(output_schema=Resume, parse_prompt=parse_resume_prompt, input_data={'resume_text': self.context})
+            document = exec_prompt(output_schema=ResumeSchema, parse_prompt=parse_resume_prompt, input_data={'resume_text': self.context})
         except Exception as e:  
             print("ERROR:", e)
             return None
         return document
 
 
-def generate_cold_email(applicant_details, job_description):
+def generate_cold_email(applicant_details, job_description, company_website_url=None):
+    website_data = None
+    if company_website_url:
+        try:
+            website_data = scrape_web(url=company_website_url)
+        except Exception as e:    
+            print(e)
+            website_data = None
     try:
-        document = exec_prompt(output_schema=Email, parse_prompt=cold_email_prompt, input_data={"applicant_details": applicant_details, "job_description": job_description})
+        document = exec_prompt(output_schema=EmailSchema, parse_prompt=cold_email_prompt, input_data={"applicant_details": applicant_details, "job_description": job_description, "website_data": website_data})
     except Exception as e:  
         print("ERROR:", e)
         return None
@@ -62,7 +69,7 @@ def generate_cold_email(applicant_details, job_description):
 
 def generate_referral_email(applicant_details, job_title):
     try:
-        document = exec_prompt(output_schema=Email, parse_prompt=referral_email_prompt, input_data={"applicant_details": applicant_details, "job_title": job_title})
+        document = exec_prompt(output_schema=EmailSchema, parse_prompt=referral_email_prompt, input_data={"applicant_details": applicant_details, "job_title": job_title})
     except Exception as e:  
         print("ERROR:", e)
         return None
