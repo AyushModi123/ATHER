@@ -23,12 +23,29 @@ class data_extraction:
                     u = a.get_object()
                     if u[ank][uri]:
                         links.append(u[ank][uri])     
-        return links              
+        return links
+    def get_profile_links(self):        
+        linkedin = codeforces = codechef = leetcode = github = None
+        for link in self.links:
+            if 'linkedin' in link:
+                linkedin = link
+            elif 'github' in link:
+                if github and len(github) > len(link):
+                    github = link
+                elif not github:
+                    github = link
+            elif 'codeforces' in link:
+                codeforces = link
+            elif 'codechef' in link:
+                codechef = link  
+            elif 'leetcode' in link:
+                leetcode = link   
+        return linkedin, github, leetcode, codechef, codeforces
     def parse_resume(self):
         if not self.context:
             return
         try:
-            document = exec_prompt(output_schema=Resume, parse_prompt=parse_resume_prompt, input_data=self.context)
+            document = exec_prompt(output_schema=Resume, parse_prompt=parse_resume_prompt, input_data={'resume_text': self.context})
         except Exception as e:  
             return e
         return document
@@ -38,6 +55,7 @@ if __name__ == '__main__':
     load_dotenv()    
     dt = data_extraction('Ayush_Modi_Resume_G.pdf')
     doc = dt.parse_resume()
+    print(doc.details)
     print(doc.education)
     print(doc.experience)
     print(doc.skills)

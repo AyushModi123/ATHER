@@ -16,7 +16,7 @@ from dotenv import load_dotenv
 load_dotenv()
 from db import db, engine
 from schemas import UserLoginSchema, UserSignupSchema
-from models.models import Base, UsersModel, EducationModel, ExperienceModel, Skills
+from models.models import Base, UsersModel, EducationModel, ExperienceModel, SkillsModel, UserDetailsModel
 from resources.parse_resume import data_extraction  
 
 
@@ -112,14 +112,29 @@ async def login(user_data: UserLoginSchema):
     raise HTTPException(status_code=401, detail="Invalid Credentials.")
 
 @app.post("/upload_resume")
-async def upload_resume(file: UploadFile, current_user_id: str = Depends(get_current_user)):
-# async def upload_resume(file: UploadFile, current_user_id=4):
+# async def upload_resume(file: UploadFile, current_user_id: str = Depends(get_current_user)):
+async def upload_resume(file: UploadFile, current_user_id=5):
     if file.content_type != "application/pdf":
         return HTTPException(status_code=400, detail="Only PDF files are allowed.")
     file_bytes = await file.read()
     de_obj = data_extraction(io.BytesIO(file_bytes))
+    linkedin_link, github_link, leetcode_link, codechef_link, codeforces_link = de_obj.get_profile_links()
     doc = de_obj.parse_resume()
-    # print(doc)
+    print(doc)
+    cand_details = doc.details
+    user_details = UserDetailsModel(
+        user_id=current_user_id,
+        name = cand_details.name,
+        email = cand_details.email,
+        contact = cand_details.contact,
+        location = cand_details.location,
+        linkedin_link = linkedin_link,
+        github_link = github_link,
+        leetcode_link = leetcode_link,
+        codechef_link = codechef_link,
+        codeforces_link = codeforces_link
+        )
+    db.add(user_details)
     for ed in doc.education:
         education = EducationModel(
             user_id=current_user_id,
@@ -140,7 +155,7 @@ async def upload_resume(file: UploadFile, current_user_id: str = Depends(get_cur
             end_date=exp.end_date
         )
         db.add(experience)
-    skills = Skills(
+    skills = SkillsModel(
         user_id=current_user_id,
         skills=doc.skills
         )
