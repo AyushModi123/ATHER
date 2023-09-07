@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 from typing import Optional
 from fastapi import FastAPI, Depends, HTTPException, status, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.security import OAuth2PasswordBearer
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from fastapi.responses import JSONResponse, Response
 from typing import Annotated
 import bcrypt
@@ -17,11 +17,11 @@ load_dotenv()
 from db import db, engine
 from schemas import UserLoginSchema, UserSignupSchema
 from models.models import Base, UsersModel, EducationModel, ExperienceModel, SkillsModel, UserDetailsModel
-from resources.parse_resume import data_extraction  
+from resources.preprocess_prompt import DataExtraction, ColdEmail
 
 
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/token")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/login")
 
 SQL_URL = os.getenv('SQL_URL')
 JWT_SECRET_KEY = os.getenv('JWT_SECRET_KEY')
@@ -99,8 +99,8 @@ async def signup(user_data: UserSignupSchema):
         return JSONResponse(content={'message': 'User created successfully', 'token': access_token }, status_code=201)
 
 @app.post("/login")
-async def login(user_data: UserLoginSchema):
-    email = user_data.email
+async def login(user_data: Annotated[OAuth2PasswordRequestForm, Depends()]):
+    email = user_data.username
     password = user_data.password
     
     user = db.query(UsersModel).filter_by(email=email).first()
@@ -108,16 +108,16 @@ async def login(user_data: UserLoginSchema):
         password_val = user.password
         if bcrypt.checkpw(password.encode('utf-8'), password_val.encode('utf-8')):
             access_token = create_access_token({"sub": email})
-            return JSONResponse(content={'access_token': access_token}, status_code=201)    
+            return JSONResponse(content={'access_token': access_token, "token_type": "bearer"}, status_code=201)    
     raise HTTPException(status_code=401, detail="Invalid Credentials.")
 
 @app.post("/upload_resume")
-# async def upload_resume(file: UploadFile, current_user_id: str = Depends(get_current_user)):
-async def upload_resume(file: UploadFile, current_user_id=5):
+async def upload_resume(file: UploadFile, current_user: str = Depends(get_current_user)):
+    current_user_id = current_user.id
     if file.content_type != "application/pdf":
         return HTTPException(status_code=400, detail="Only PDF files are allowed.")
     file_bytes = await file.read()
-    de_obj = data_extraction(io.BytesIO(file_bytes))
+    de_obj = DataExtraction(io.BytesIO(file_bytes))
     linkedin_link, github_link, leetcode_link, codechef_link, codeforces_link = de_obj.get_profile_links()
     doc = de_obj.parse_resume()
     print(doc)
@@ -162,6 +162,19 @@ async def upload_resume(file: UploadFile, current_user_id=5):
     db.add(skills)
     db.commit()
     return JSONResponse(content={'message': "PDF file uploaded and parsed successfully."}, status_code=201)
+
+@app.post("/cold_email")
+async def cold_email(job_description: str, current_user: str = Depends(get_current_user)):
+    current_user_id = current_user.id
+    details = db.query(UserDetailsModel).filter_by(id=current_user_id).first()
+    experience = db.query(ExperienceModel).filter_by(id=current_user_id).all()
+    education = db.query(EducationModel).filter_by(id=current_user_id).all()
+    skills = db.query(SkillsModel).filter_by(id=current_user_id).first()
+    
+    cold_email_obj = ColdEmail({"details": details, "experience": experience, "education": education, "skills": skills})
+    email = cold_email_obj.generate_cold_email(job_description=job_description)
+    
+    return JSONResponse(content={"email": {"subject": email.subject, "body": email.body}}, status_code=201)
 
 if __name__ == '__main__':
     uvicorn.run('app:app', host='0.0.0.0', port=5000, reload=True)

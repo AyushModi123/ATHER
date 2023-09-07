@@ -1,10 +1,10 @@
 from PyPDF2 import PdfReader
 import os
-from prompts import parse_resume_prompt, Resume
+from prompts import parse_resume_prompt, cold_email_prompt, Resume, Cold_Email
 from utils.exec_prompt import exec_prompt
 
 
-class data_extraction:
+class DataExtraction:
     def __init__(self, path):        
         self.reader = PdfReader(path)
         self.num_pages = len(self.reader.pages)
@@ -47,13 +47,28 @@ class data_extraction:
         try:
             document = exec_prompt(output_schema=Resume, parse_prompt=parse_resume_prompt, input_data={'resume_text': self.context})
         except Exception as e:  
-            return e
+            print("ERROR:", e)
+            return None
         return document
+
+
+class ColdEmail:
+    def __init__(self, applicant_details) -> None:
+        self.applicant_details = applicant_details
+
+    def generate_cold_email(self, job_description):
+        try:
+            document = exec_prompt(output_schema=Cold_Email, parse_prompt=cold_email_prompt, input_data={"applicant_details": self.applicant_details, "job_description": job_description})
+        except Exception as e:  
+            print("ERROR:", e)
+            return None
+        return document
+    
 
 if __name__ == '__main__':
     from dotenv import load_dotenv
     load_dotenv()    
-    dt = data_extraction('Ayush_Modi_Resume_G.pdf')
+    dt = DataExtraction('Ayush_Modi_Resume_G.pdf')
     doc = dt.parse_resume()
     print(doc.details)
     print(doc.education)

@@ -23,13 +23,17 @@ class Experience(BaseModel):
     start_date: str = Field(None, description="start month and year of experience e.g. 03/2020")
     end_date: str = Field(None, description="end month and year of experience e.g. 06/2020")
 
-
 class Resume(BaseModel):
     """Parsing Resume"""
     details: Candidate_Details = Field(..., description="Contains details of person as dictionary")
     education: Sequence[Education] = Field(..., description="Contains list of different educations")
     experience: Sequence[Experience] = Field(..., description="Contains list of different experiences")
     skills: str = Field(None, description="Contains technical and non technical skills separated by comma")
+
+class Cold_Email(BaseModel):
+    """Generate Cold Email"""
+    subject: str = Field(..., description="Generate a short precise subject of email")
+    body: str = Field(..., description="Generate short body of email describing details of resume and how they fit the job description")
 
 
 parse_resume_prompt = PromptTemplate(
@@ -38,3 +42,10 @@ parse_resume_prompt = PromptTemplate(
           Tip: Make sure to answer in the correct format. Return value of fields as None if value not found.'''
 )
 
+cold_email_prompt = PromptTemplate(
+    input_variables=["applicant_details", "job_description"],
+    template='''You are a world class algorithm for generating emails in structured formats. Use the given format to write cold email from the following input applicant details: {applicant_details} for job description: {job_description}. 
+          Tip: Make sure to answer in the correct format. Keep the email short, on-point and explain why applicant is best fit for the role.'''
+)
+#ToDo
+# Scrape website of company which posted job desciption and pass it to gpt
