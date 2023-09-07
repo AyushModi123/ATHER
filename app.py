@@ -180,10 +180,10 @@ async def cold_email(job_description: str, company_website_url: Optional[str] = 
     return JSONResponse(content={"email": {"subject": email.subject, "body": email.body}}, status_code=201)
 
 @app.post("/referral_email")
-async def referral_email(job_title: str, current_user: str = Depends(get_current_verified_user)):
+async def referral_email(job_role: str, current_user: str = Depends(get_current_verified_user)):
     current_user_id = current_user.id
     applicant_details = get_user_details(current_user_id=current_user_id)
-    email = generate_referral_email(applicant_details=applicant_details, job_title=job_title)
+    email = generate_referral_email(applicant_details=applicant_details, job_role=job_role)
 
     return JSONResponse(content={"email": {"subject": email.subject, "body": email.body}}, status_code=201)
 

@@ -51,6 +51,6 @@ cold_email_prompt = PromptTemplate(
 referral_email_prompt = PromptTemplate(
     input_variables=["applicant_details", "job_role"],
     template='''You are a world class algorithm for generating emails in structured formats. Use the given format to write referral email from the following input applicant details: {applicant_details}.
-          Tip: Make sure to answer in the correct format. Applicant is asking for referral for this job role: {job_role}. Include relevant applicant details in email. Keep email short and on-point.
+          Tip: Make sure to answer in the correct format. Applicant is asking for referral for this job role: {job_role} from company's employee. Include relevant applicant details in email. Keep email short and on-point.
           Through words, applicant tries to show how much this job can impact the carrer. Also include 2 line poem in email in professional and funny tone.'''
 )

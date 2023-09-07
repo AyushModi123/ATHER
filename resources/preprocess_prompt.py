@@ -67,9 +67,9 @@ def generate_cold_email(applicant_details, job_description, company_website_url=
         return None
     return document
 
-def generate_referral_email(applicant_details, job_title):
+def generate_referral_email(applicant_details, job_role):
     try:
-        document = exec_prompt(output_schema=EmailSchema, parse_prompt=referral_email_prompt, input_data={"applicant_details": applicant_details, "job_title": job_title})
+        document = exec_prompt(output_schema=EmailSchema, parse_prompt=referral_email_prompt, input_data={"applicant_details": applicant_details, "job_role": job_role})
     except Exception as e:  
         print("ERROR:", e)
         return None
