@@ -17,7 +17,7 @@ load_dotenv()
 from db import db, engine
 from schemas import UserLoginSchema, UserSignupSchema
 from models.models import Base, UsersModel, EducationModel, ExperienceModel, SkillsModel, UserDetailsModel
-from resources.preprocess_prompt import DataExtraction, generate_cold_email, generate_referral_email
+from resources.preprocess_prompt import DataExtraction, generate_cold_email, generate_referral_email, generate_cover_letter
 
 
 
@@ -178,6 +178,15 @@ async def cold_email(job_description: str, company_website_url: Optional[str] = 
     email = generate_cold_email(applicant_details=applicant_details, job_description=job_description, company_website_url=company_website_url)
     
     return JSONResponse(content={"email": {"subject": email.subject, "body": email.body}}, status_code=201)
+
+@app.post("/cover_letter")
+async def cover_letter(job_description: str, current_user: str = Depends(get_current_verified_user)):
+    current_user_id = current_user.id
+    applicant_details = get_user_details(current_user_id=current_user_id)
+    print(applicant_details)
+    cv = generate_cover_letter(applicant_details=applicant_details, job_description=job_description)
+    
+    return JSONResponse(content={"cover_letter": {"body": cv.body}}, status_code=201)
 
 @app.post("/referral_email")
 async def referral_email(job_role: str, current_user: str = Depends(get_current_verified_user)):

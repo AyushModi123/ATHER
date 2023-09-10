@@ -3,3 +3,5 @@ ATHER_venv
 datasets
 __pycache__
 *.env
+my_bot.py
+personality.py

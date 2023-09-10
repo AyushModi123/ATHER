@@ -1,6 +1,6 @@
 from PyPDF2 import PdfReader
 import os
-from prompts import parse_resume_prompt, cold_email_prompt, referral_email_prompt, ResumeSchema, EmailSchema
+from prompts import parse_resume_prompt, cold_email_prompt, referral_email_prompt, cover_letter_prompt, ResumeSchema, EmailSchema, CoverLetterSchema
 from utils.exec_prompt import exec_prompt
 from utils.scraper import scrape_web
 
@@ -62,6 +62,14 @@ def generate_cold_email(applicant_details, job_description, company_website_url=
             website_data = None
     try:
         document = exec_prompt(output_schema=EmailSchema, parse_prompt=cold_email_prompt, input_data={"applicant_details": applicant_details, "job_description": job_description, "website_data": website_data})
+    except Exception as e:  
+        print("ERROR:", e)
+        return None
+    return document
+
+def generate_cover_letter(applicant_details, job_description):
+    try:
+        document = exec_prompt(output_schema=CoverLetterSchema, parse_prompt=cover_letter_prompt, input_data={"applicant_details": applicant_details, "job_description": job_description})
     except Exception as e:  
         print("ERROR:", e)
         return None

@@ -35,6 +35,9 @@ class EmailSchema(BaseModel):
     subject: str = Field(..., description="Generate a short precise subject of email")
     body: str = Field(..., description="Generate body of email describing details of resume and how they fit the job")
 
+class CoverLetterSchema(BaseModel):
+    """Generate Cover Email"""    
+    body: str = Field(..., description="Generate cover letter describing applicant details.")
 
 parse_resume_prompt = PromptTemplate(
     input_variables=["resume_text"],
@@ -52,5 +55,11 @@ referral_email_prompt = PromptTemplate(
     input_variables=["applicant_details", "job_role"],
     template='''You are a world class algorithm for generating emails in structured formats. Use the given format to write referral email from the following input applicant details: {applicant_details}.
           Tip: Make sure to answer in the correct format. Applicant is asking for referral for this job role: {job_role} from company's employee. Include relevant applicant details in email. Keep email short and on-point.
-          Through words, applicant tries to show how much this job can impact the carrer. Also include 2 line poem in email in professional and funny tone.'''
+          Through words, applicant tries to show how much this job can impact the career. Also include 2 line poem in email in professional and funny tone.'''
+)
+
+cover_letter_prompt = PromptTemplate(
+    input_variables=["applicant_details", "job_description"],
+    template='''You are a world class algorithm for generating cover letters for resume in structured formats. Use the given format to write cover letter from the following input applicant details: {applicant_details}. JOB DESCRIPTION: {job_description}. 
+          Tip: Make sure to answer in the correct format. Include relevant applicant details in body. Cover letter should include applicant's experience, education and skills. Text in cover letter should describe whole resume(applicant details) in words.'''
 )
